@@ -1,0 +1,63 @@
+services:
+  lean_lsp_mcp:
+    image: lean_lsp_mcp:latest
+    container_name: lean_lsp_mcp_server
+    
+    # Environment variables for the MCP server
+    environment:
+      - LEAN_PROJECT_PATH=/app
+      - PYTHONUNBUFFERED=1
+      - LEAN_LOG_LEVEL=INFO
+    
+    # Mount volumes for development and testing
+    volumes:
+      # Mount test files
+      - ./test_goal_tool.py:/app/tests/test_goal_tool.py:ro
+      - ./test_diagnostic_tool.py:/app/tests/test_diagnostic_tool.py:ro
+      - ./test_simple_goal.py:/app/tests/test_simple_goal.py:ro
+      - ./test_goal_example.lean:/app/test_files/test_goal_example.lean:ro
+      - ./test_import.py:/app/tests/test_import.py:ro
+
+      # Mount workspace directory
+      - ./workspace:/workspace
+    
+    # Default command - run MCP server with stdio transport
+    command: lean-lsp-mcp --transport stdio
+    
+    # Alternative commands (uncomment as needed):
+    # For interactive testing:
+    # command: tail -f /dev/null
+    
+    # For HTTP transport:
+    # command: lean-lsp-mcp --transport streamable-http --host 0.0.0.0 --port 8000
+
+    # For SSE transport:
+    # command: lean-lsp-mcp --transport sse --host 0.0.0.0 --port 8000
+    
+    # Expose port for HTTP/SSE transports
+    ports:
+      - "8000:8000"
+    
+    # Working directory
+    working_dir: /app
+    
+    # Health check to ensure server is ready
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import lean_lsp_mcp; import leanclient; import mcp; print('OK')"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    
+    # Resource limits (optional but recommended)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2.0'
+    #       memory: 4G
+    #     reservations:
+    #       cpus: '1.0'
+    #       memory: 2G
+    
+    # Restart policy
+    restart: unless-stopped
