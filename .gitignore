@@ -145,7 +145,10 @@ temp/
 
 # Lean MCP specific
 workspace/
-tests/
 
 # Agent
 agents.md
+
+# Docker Volume
+deployments/svc-moe/versions
+deployments/svc-lean-lsp-mcp/workspace
