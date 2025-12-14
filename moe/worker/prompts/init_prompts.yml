@@ -1,0 +1,95 @@
+# Langfuse Prompt Configurations for MOE Worker
+# These prompts will be initialized in Langfuse for prompt management and versioning
+
+prompts:
+  - name: guardrail_check
+    description: "Check if submission is a valid mathematical solution or proof"
+    type: text
+    config:
+      model: "deepseek/deepseek-math-7b-instruct"
+      temperature: 0.0
+      max_tokens: 500
+    template: |
+      Analyze the following mathematical text and determine if it represents a genuine attempt at a mathematical proof or solution.
+      
+      Return ONLY one of these responses:
+      - "VALID" if it is a mathematical proof/solution
+      - "INVALID: <reason>" if it is not (e.g., empty, gibberish, off-topic, or not mathematical)
+      
+      Text to analyze:
+      {{solution}}
+      
+      Response:
+    labels:
+      - guardrail
+      - validation
+      - math
+    
+  - name: latex_to_lean
+    description: "Convert LaTeX mathematical proof to Lean 4 code"
+    type: text
+    config:
+      model: "deepseek/deepseek-math-7b-instruct"
+      temperature: 0.1
+      max_tokens: 2000
+    template: |
+      Convert the following mathematical proof from LaTeX to Lean 4.
+      
+      Problem Statement:
+      {{problem_statement}}
+      
+      Problem Context (Lean):
+      Statement: {{statement_lean}}
+      State Before: {{state_before_lean}}
+      State After: {{state_after_lean}}
+      Expected Tactic: {{tactic_lean}}
+      
+      Proof in LaTeX:
+      {{solution_latex}}
+      
+      Generate ONLY the Lean 4 code that proves the theorem. Include necessary imports and the complete proof. Do not include explanations or comments.
+      
+      Lean 4 Code:
+    labels:
+      - conversion
+      - latex
+      - lean
+      - translation
+    
+  - name: feedback_generation
+    description: "Generate constructive feedback for mathematical proof submission"
+    type: text
+    config:
+      model: "deepseek/deepseek-math-7b-instruct"
+      temperature: 0.3
+      max_tokens: 1000
+    template: |
+      Provide constructive feedback for this mathematical proof submission.
+      
+      Original Proof (LaTeX):
+      {{solution_latex}}
+      
+      Converted Lean Code:
+      {{lean_code}}
+      
+      Lean Validation Status: {{validation_status}}
+      
+      Validation Errors:
+      {{errors}}
+      
+      Remaining Goals:
+      {{remaining_goals}}
+      
+      Please provide feedback in 2-4 clear sentences focusing on:
+      - Strengths of the proof approach and reasoning
+      - Specific issues found during validation (if any)
+      - Concrete suggestions for improvement
+      - Mathematical correctness and completeness
+      
+      Keep the feedback constructive, educational, and focused on helping the student improve their proof-writing skills.
+      
+      Feedback:
+    labels:
+      - feedback
+      - evaluation
+      - educational
