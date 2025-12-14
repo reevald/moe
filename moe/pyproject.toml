@@ -1,0 +1,59 @@
+[tool.poetry]
+name = "moe"
+version = "0.1.0"
+description = "Math Olympiad Exercises API"
+authors = ["Galang galang@profematika.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pydantic = "^2.5"
+pydantic-settings = "^2.1"
+sqlalchemy = "^2.0"
+redis = "^5.0"
+httpx = "^0.26"
+
+[tool.poetry.group.api]
+optional = false
+
+[tool.poetry.group.api.dependencies]
+fastapi = "^0.110"
+uvicorn = {extras = ["standard"], version = "^0.29"}
+sentry-sdk = {extras = ["fastapi"], version = "^1.40"}
+
+[tool.poetry.group.worker]
+optional = false
+
+[tool.poetry.group.worker.dependencies]
+celery = {extras = ["redis"], version = "^5.3"}
+langchain = "^0.1"
+langchain-openai = "^0.0.5"
+langfuse = "^2.0"
+sentry-sdk = {extras = ["celery"], version = "^1.40"}
+
+[tool.poetry.group.migration]
+optional = false
+
+[tool.poetry.group.migration.dependencies]
+alembic = "^1.13"
+psycopg2-binary = "^2.9"
+supabase = "^2.0"
+requests = "^2.31"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+pytest-asyncio = "^0.23"
+black = "^24.0"
+ruff = "^0.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 79
+target-version = ['py312']
+
+[tool.ruff]
+line-length = 79
+target-version = "py312"
