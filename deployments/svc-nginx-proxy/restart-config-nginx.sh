@@ -1,0 +1,1 @@
+docker exec -i nginx-proxy /bin/bash -c "nginx -t && /etc/init.d/nginx restart"

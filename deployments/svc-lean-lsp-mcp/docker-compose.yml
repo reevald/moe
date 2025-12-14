@@ -1,0 +1,58 @@
+services:
+  lean_lsp_mcp:
+    image: ${LEAN_MCP_DOCKER_IMAGE:-lean_lsp_mcp:latest}
+    container_name: lean_lsp_mcp_server
+    environment:
+      - LEAN_PROJECT_PATH=/app
+      - PYTHONUNBUFFERED=1
+      - LEAN_LOG_LEVEL=INFO
+      - TZ=${TIMEZONE:-Asia/Jakarta}
+    
+    # Expose port for HTTP transport
+    ports:
+      - "127.0.0.1:${LEAN_MCP_HOST_PORT:-8002}:8000"
+    
+    # Mount workspace directory for Lean projects
+    volumes:
+      - ./workspace:/workspace
+      - lean-cache:/root/.cache
+    
+    # Run MCP server with streamable-http transport
+    command: ["lean-lsp-mcp", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8000"]
+    
+    # Working directory
+    working_dir: /app
+    
+    # Health check to ensure server is ready
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+    
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    networks:
+      - lean-mcp-net
+
+volumes:
+  lean-cache:
+    driver: local
+
+networks:
+  lean-mcp-net:
+    driver: bridge
+    name: ${NETWORK_NAME:-lean-mcp-net}
+    external: ${EXTERNAL_NETWORK_STATUS:-false}

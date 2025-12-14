@@ -1,0 +1,124 @@
+services:
+  # Redis - Message broker for Celery
+  redis:
+    image: ${MOE_REDIS_DOCKER_IMAGE:-redis:7-alpine}
+    container_name: moe-redis
+    ports:
+      - "127.0.0.1:${MOE_REDIS_HOST_PORT:-8479}:6379"
+    volumes:
+      - redis-data:/data
+    environment:
+      - TZ=${TIMEZONE:-Asia/Jakarta}
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - moe-net
+
+  # Migration Service
+  migration:
+    image: ${MOE_MIGRATION_DOCKER_IMAGE=-moe-migration:latest}
+    container_name: moe-migration
+    volumes:
+      - ../../moe/wkbk_lean.sql:/app/wkbk_lean.sql:ro
+      - ./versions:/app/migration/versions
+    environment:
+      - TZ=${TIMEZONE:-Asia/Jakarta}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+    networks:
+      - moe-net
+    restart: "no"  # Run once
+
+  # API Service
+  api:
+    image: ${MOE_API_DOCKER_IMAGE:-moe-api:latest}
+    container_name: moe-api
+    ports:
+      - "127.0.0.1:${MOE_API_HOST_PORT:8001}:8000"
+    environment:
+      - TZ=${TIMEZONE:-Asia/Jakarta}
+      - REDIS_URL=redis://moe-redis:6379/0
+
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL}
+      - MATH_MODEL_NAME=${MATH_MODEL_NAME}
+
+      - LANGFUSE_BASE_URL=${LANGFUSE_BASE_URL}
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY}
+
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+
+      - SENTRY_DSN=${SENTRY_DSN}
+      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT}
+      - SENTRY_TRACES_SAMPLE_RATE=${SENTRY_TRACES_SAMPLE_RATE}
+      - SENTRY_PROFILE_SESSION_SAMPLE_RATE=${SENTRY_PROFILE_SESSIONS_SAMPLE_RATE}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/api/v1/health').raise_for_status()"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - moe-net
+
+  # Worker Service (Celery)
+  worker:
+    image: ${MOE_WORKER_DOCKER_IMAGE:-moe-worker:latest}
+    container_name: moe-worker
+    environment:
+      - TZ=${TIMEZONE:-Asia/Jakarta}
+      - REDIS_URL=redis://moe-redis:6379/0
+
+      - LEAN_LSP_MCP_URL=${LEAN_LSP_MCP_URL:-http://lean_lsp_mcp_server:8000}
+
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL}
+      - MATH_MODEL_NAME=${MATH_MODEL_NAME}
+
+      - LANGFUSE_BASE_URL=${LANGFUSE_BASE_URL}
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY}
+
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+
+      - SENTRY_DSN=${SENTRY_DSN}
+      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT}
+      - SENTRY_TRACES_SAMPLE_RATE=${SENTRY_TRACES_SAMPLE_RATE}
+      - SENTRY_PROFILE_SESSION_SAMPLE_RATE=${SENTRY_PROFILE_SESSIONS_SAMPLE_RATE}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "celery", "-A", "worker.celery_app", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - moe-net
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  moe-net:
+    driver: bridge
+    name: ${NETWORK_NAME:-moe-net}
+    external: ${EXTERNAL_NETWORK_STATUS:-false}

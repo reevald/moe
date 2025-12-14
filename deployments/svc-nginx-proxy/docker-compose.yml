@@ -1,0 +1,28 @@
+services:
+  nginx:
+    container_name: nginx-proxy
+    restart: always
+    image: nginx:latest
+    ports:
+      - 8154:80
+    volumes:
+      # Nginx logs
+      - ./nginx-logs:/var/log/nginx
+
+      # Main config nginx
+      - ./nginx/proxy.conf:/etc/nginx/proxy.conf
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      
+    healthcheck:
+      test: ["CMD-SHELL", "curl -so /dev/null http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - proxy-net
+
+networks:
+  proxy-net:
+    name: proxy-net
+    driver: bridge
