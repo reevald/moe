@@ -1,1 +1,1 @@
-# MOE (Math Olympiad Exercises)
+# MOE (Math Olympiad Evaluator)

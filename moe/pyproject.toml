@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "moe"
 version = "0.1.0"
-description = "Math Olympiad Exercises API"
+description = "Math Olympiad Evaluator API"
 authors = ["Galang galang@profematika.com>"]
 readme = "README.md"
 
@@ -10,6 +10,7 @@ python = "^3.12"
 pydantic = "^2.5"
 pydantic-settings = "^2.1"
 sqlalchemy = "^2.0"
+psycopg2-binary = "^2.9"
 redis = "^5.0"
 httpx = "^0.26"
 
@@ -19,6 +20,7 @@ optional = false
 [tool.poetry.group.api.dependencies]
 fastapi = "^0.110"
 uvicorn = {extras = ["standard"], version = "^0.29"}
+celery = {extras = ["redis"], version = "^5.3"}
 sentry-sdk = {extras = ["fastapi"], version = "^1.40"}
 
 [tool.poetry.group.worker]
