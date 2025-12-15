@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.fastmcp.utilities.logging import get_logger, configure_logging
 from mcp.server.auth.settings import AuthSettings
+from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 from leanclient import LeanLSPClient, DocumentContentChange
 
@@ -157,6 +158,12 @@ if auth_token:
         resource_server_url="http://localhost/dummy-resource",
     )
     mcp_kwargs["token_verifier"] = OptionalTokenVerifier(auth_token)
+
+# Configure transport security to allow Docker network hostnames and IPs
+# This prevents 421 errors when accessed from other Docker containers
+mcp_kwargs["transport_security"] = TransportSecuritySettings(
+    enable_dns_rebinding_protection=False  # Disable for Docker network access
+)
 
 mcp = FastMCP(**mcp_kwargs)
 
