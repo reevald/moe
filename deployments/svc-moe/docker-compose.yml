@@ -21,7 +21,7 @@ services:
 
   # Migration Service
   migration:
-    image: ${MOE_MIGRATION_DOCKER_IMAGE=-moe-migration:latest}
+    image: ${MOE_MIGRATION_DOCKER_IMAGE-moe-migration:latest}
     container_name: moe-migration
     volumes:
       - ../../moe/wkbk_lean.sql:/app/wkbk_lean.sql:ro
@@ -40,7 +40,7 @@ services:
     image: ${MOE_API_DOCKER_IMAGE:-moe-api:latest}
     container_name: moe-api
     ports:
-      - "127.0.0.1:${MOE_API_HOST_PORT:8001}:8000"
+      - "127.0.0.1:${MOE_API_HOST_PORT:-8001}:8000"
     environment:
       - TZ=${TIMEZONE:-Asia/Jakarta}
       - REDIS_URL=redis://moe-redis:6379/0
@@ -60,7 +60,7 @@ services:
       - SENTRY_DSN=${SENTRY_DSN}
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT}
       - SENTRY_TRACES_SAMPLE_RATE=${SENTRY_TRACES_SAMPLE_RATE}
-      - SENTRY_PROFILE_SESSION_SAMPLE_RATE=${SENTRY_PROFILE_SESSIONS_SAMPLE_RATE}
+      - SENTRY_PROFILE_SESSION_SAMPLE_RATE=${SENTRY_PROFILE_SESSION_SAMPLE_RATE}
     depends_on:
       redis:
         condition: service_healthy
@@ -99,7 +99,7 @@ services:
       - SENTRY_DSN=${SENTRY_DSN}
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT}
       - SENTRY_TRACES_SAMPLE_RATE=${SENTRY_TRACES_SAMPLE_RATE}
-      - SENTRY_PROFILE_SESSION_SAMPLE_RATE=${SENTRY_PROFILE_SESSIONS_SAMPLE_RATE}
+      - SENTRY_PROFILE_SESSION_SAMPLE_RATE=${SENTRY_PROFILE_SESSION_SAMPLE_RATE}
     depends_on:
       redis:
         condition: service_healthy
