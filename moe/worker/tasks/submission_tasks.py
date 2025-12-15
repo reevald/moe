@@ -17,6 +17,7 @@ from common.config import get_settings
 from common.db import create_engine_from_url, create_session_factory
 from modules import moe_service
 from worker.celery_app import celery_app
+from worker.lean_mcp_client import validate_lean_code
 
 logger = logging.getLogger(__name__)
 
@@ -360,26 +361,37 @@ def validate_with_lean_lsp(lean_code: str) -> dict[str, Any]:
         lean_code: Lean code to validate
 
     Returns:
-        dict: Validation result
-
-    Note:
-        This is a placeholder. Actual implementation requires
-        integration with Lean LSP MCP server.
+        dict: Validation result with keys:
+            - is_valid: bool indicating if code is valid
+            - status: str status message
+            - errors: list of error messages
+            - remaining_goals: list of remaining proof goals
     """
-    # TODO: Implement actual Lean LSP MCP integration
-    # For now, return a mock response
-    logger.warning("Using mock Lean LSP validation")
-
-    # Simulate validation
-    time.sleep(1)
-
-    # Mock success response
-    return {
-        "is_valid": True,
-        "status": "success",
-        "errors": [],
-        "remaining_goals": []
-    }
+    settings = get_settings()
+    mcp_url = settings.lean_lsp_mcp_url
+    
+    logger.info(f"Validating Lean code via MCP server at {mcp_url}")
+    
+    try:
+        # Use the MCP SDK to validate the Lean code
+        result = validate_lean_code(mcp_url, lean_code)
+        
+        logger.info(
+            f"Validation result: is_valid={result['is_valid']}, "
+            f"errors={len(result.get('errors', []))}, "
+            f"remaining_goals={len(result.get('remaining_goals', []))}"
+        )
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Unexpected error validating Lean code: {e}", exc_info=True)
+        return {
+            "is_valid": False,
+            "status": "error",
+            "errors": [{"message": f"Validation error: {str(e)}"}],
+            "remaining_goals": []
+        }
 
 
 def generate_feedback(

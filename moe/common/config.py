@@ -83,6 +83,12 @@ class Settings(BaseSettings):
         description="Langfuse base URL"
     )
 
+    # Lean LSP MCP
+    lean_lsp_mcp_url: str = Field(
+        default="http://lean_lsp_mcp_server:8000",
+        description="Lean LSP MCP server URL"
+    )
+
     # Sentry
     sentry_dsn: Optional[str] = Field(
         default=None,
