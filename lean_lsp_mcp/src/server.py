@@ -1184,5 +1184,12 @@ def hammer_premise(
     return _to_json_array(items)
 
 
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request):
+    """Health check endpoint for Docker and monitoring."""
+    from starlette.responses import JSONResponse
+    return JSONResponse({"status": "healthy", "service": "lean-lsp-mcp"})
+
+
 if __name__ == "__main__":
     mcp.run()
