@@ -7,6 +7,8 @@ Can be used by both API and Worker services.
 
 import json
 import logging
+import random
+import time
 import uuid
 from datetime import datetime
 from typing import Any, Optional
@@ -17,6 +19,10 @@ from sqlalchemy.orm import Session
 from common.models import Problem, Submission, SubmissionResult
 
 logger = logging.getLogger(__name__)
+
+# Cache the count for 5 minutes to avoid the HEAD request every time
+_count_cache = {"count": 0, "timestamp": 0}
+_CACHE_TTL = 300  # 5 minutes
 
 
 class ProblemNotFoundError(Exception):
@@ -71,18 +77,43 @@ def get_random_problem_from_supabase(
     }
 
     with httpx.Client() as client:
+        # Use cached count if available and fresh
+        now = time.time()
+        if now - _count_cache["timestamp"] > _CACHE_TTL:
+            # Refresh count
+            count_response = client.head(
+                f"{supabase_url}/problems",
+                headers={**headers, "Prefer": "count=exact"}
+            )
+            count_response.raise_for_status()
+            
+            content_range = count_response.headers.get("Content-Range", "")
+            if not content_range or "/" not in content_range:
+                return None
+            
+            _count_cache["count"] = int(content_range.split("/")[1])
+            _count_cache["timestamp"] = now
+        
+        total_count = _count_cache["count"]
+        
+        if total_count == 0:
+            return None
+        
+        # Fetch random row
+        random_offset = random.randint(0, total_count - 1)
+        
         response = client.get(
             f"{supabase_url}/problems",
-            headers=headers,
-            params={"limit": "1", "order": "created_at.desc"}
+            headers={**headers, "Prefer": "count=none"},
+            params={
+                "limit": "1",
+                "offset": str(random_offset)
+            }
         )
         response.raise_for_status()
         problems = response.json()
-
-        if not problems:
-            return None
-
-        return problems[0]
+        
+        return problems[0] if problems else None
 
 
 def get_problem_by_id_from_supabase(
