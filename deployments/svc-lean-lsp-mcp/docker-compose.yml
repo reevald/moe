@@ -7,6 +7,8 @@ services:
       - PYTHONUNBUFFERED=1
       - LEAN_LOG_LEVEL=INFO
       - TZ=${TIMEZONE:-Asia/Jakarta}
+      - LAKE_NO_CACHE=true
+      - MATHLIB_NO_CACHE_ON_UPDATE=1
     
     # Expose port for HTTP transport
     ports:

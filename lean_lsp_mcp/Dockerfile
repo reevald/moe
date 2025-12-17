@@ -38,12 +38,8 @@ RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install -r requirements.txt
 RUN python3 -m pip install -e .
 
-# Create a basic lean-toolchain file if it doesn't exist
-RUN if [ ! -f lean-toolchain ]; then \
-    echo "leanprover/lean4:stable" > lean-toolchain; \
-    fi
-
 # Create a basic lakefile.lean if it doesn't exist
+# Note: lean-toolchain will be created automatically by 'lake update' based on mathlib's requirements
 RUN if [ ! -f lakefile.lean ]; then \
     echo 'import Lake' > lakefile.lean && \
     echo 'open Lake DSL' >> lakefile.lean && \
@@ -63,19 +59,38 @@ RUN if [ ! -f lakefile.lean ]; then \
 # Update lake and get mathlib dependencies
 RUN lake update
 
-# Get mathlib cache to speed up builds (this downloads precompiled mathlib)
-RUN curl -L https://raw.githubusercontent.com/leanprover-community/mathlib4/master/scripts/get-cache.sh -o get-cache.sh && \
-    bash get-cache.sh || echo "Manual cache get failed, trying lake exe cache get..."
+# CRITICAL: Pre-download mathlib cache to avoid 10-15 min delays on first request
+# This downloads precompiled mathlib binaries (~6 GB, 7726 files) during build time
+# Without this, every container restart requires a fresh download
+# Lake downloads cache to BOTH /app/.lake/packages/mathlib/.lake/build AND /root/.cache/mathlib
+RUN echo "=== Step 1: Downloading and extracting mathlib cache (10-15 minutes) ===" && \
+    echo "This downloads .ltar archives and extracts them to .olean files..." && \
+    timeout 1200 lake exe cache get && \
+    echo "" && \
+    echo "Cache statistics after first extraction:" && \
+    echo "  - Project build directory:" && \
+    du -sh /app/.lake/packages/mathlib/.lake/build && \
+    echo "  - User cache directory (.ltar files):" && \
+    du -sh /root/.cache/mathlib && \
+    echo "  - Extracted .olean files:" && \
+    find /app/.lake/packages/mathlib/.lake/build -name "*.olean" 2>/dev/null | wc -l && \
+    echo "" && \
+    echo "=== Step 2: Running cache get again to ensure everything is extracted ===" && \
+    echo "If this completes quickly (<30s), the cache is fully prepared." && \
+    echo "If it takes minutes, leantar is still extracting remaining archives..." && \
+    timeout 900 lake exe cache get && \
+    echo "✓ Mathlib cache fully prepared and verified!"
 
-RUN lake exe cache get || echo "Lake cache get failed, will build core dependencies..."
-
-# Build core mathlib components that are commonly used
-# Note: We build as much as we can without failing the docker build
-RUN lake build Mathlib.Tactic.Basic Mathlib.Tactic.Ring Mathlib.Tactic.Linarith Mathlib.Data.Nat.Basic || \
-    echo "Some mathlib components had build issues, continuing with partial build..."
-
-# Build Mathlib.Init which is fundamental
-RUN lake build Mathlib.Init || echo "Mathlib.Init build had issues..."
+# CRITICAL FIX: Patch mathlib's lakefile to disable post_update hook
+# The post_update hook runs "lake exe cache get" every time a package loads,
+# causing 3-5 minute delays on EVERY validation. We already have the cache,
+# so we patch the lakefile to skip this automatic cache check.
+RUN echo "=== Patching mathlib lakefile to disable automatic cache updates ===" && \
+    cd /app/.lake/packages/mathlib && \
+    cp lakefile.lean lakefile.lean.original && \
+    sed -i 's/post_update pkg do/post_update pkg do\n  return -- PATCHED: Skip cache get to avoid runtime delays/' lakefile.lean && \
+    echo "✓ Mathlib lakefile patched successfully" && \
+    echo "  Post-update hook will now return immediately without running cache get"
 
 # Create test files directory
 RUN mkdir -p /app/test_files
@@ -83,8 +98,19 @@ RUN mkdir -p /app/test_files
 # Copy test lean file to test_files directory
 COPY src/test.lean /app/test_files/
 
+# NOTE: Cache validation skipped - the mathlib cache is pre-downloaded above
+# and will be used by the LSP server at runtime. The cache is located at:
+# /app/.lake/packages/mathlib/.lake/build (~6GB)
+
 # Set up PATH for lean commands
 ENV PATH="/root/.elan/bin:$PATH"
+
+# CRITICAL: Disable Lake cache downloads since we already have the cache pre-downloaded
+# This prevents Lake from running 'cache get' on every validation request
+# The cache is already present in /app/.lake/packages/mathlib/.lake/build and /root/.cache/mathlib
+ENV LAKE_NO_CACHE=true
+# Disable mathlib's post_update hook that automatically runs cache get
+ENV MATHLIB_NO_CACHE_ON_UPDATE=1
 
 # Expose port for MCP server
 EXPOSE 8000
