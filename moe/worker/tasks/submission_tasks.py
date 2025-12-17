@@ -242,17 +242,20 @@ def guardrail_check(
     prompt_template = PromptTemplate(
         input_variables=["solution"],
         template="""
-Analyze the following mathematical text and determine if it 
-represents a genuine attempt at a mathematical proof or solution.
+You are a strict validator. Analyze if the text is a mathematical proof or solution.
 
-Return ONLY one of these responses:
-- "VALID" if it is a mathematical proof/solution
-- "INVALID: <reason>" if it is not
+CRITICAL: Your response MUST be EXACTLY one of these formats:
+- "VALID" (if it contains mathematical reasoning/proof)
+- "INVALID: <brief reason>" (if it does not)
+
+DO NOT include any explanation, analysis, or additional text.
+DO NOT write multiple sentences.
+Return ONLY the format above.
 
 Text to analyze:
 {solution}
 
-Response:"""
+Your response (VALID or INVALID: reason):"""
     )
 
     trace = langfuse.trace(name="guardrail_check")
